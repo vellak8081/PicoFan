@@ -3,7 +3,7 @@ An open source 6 to 8 channel PWM fan controller written in CircuitPython for th
 
 This firmware is intended to be used to build a high end DIY open source fan controller, similar to the Corsair Commander Pro or the Aquacomputer Octo.
 
-Features:
+# Features
 - 6 to 8 PWM fan control channels
 - 4 to 8 tachometer/flow meter channels
 - support for up to 2 thermistors for sensing air or liquid temperature
@@ -13,3 +13,13 @@ Features:
 - easily reprogrammable - arguably, that's more a feature of CircuitPython though
 
 A controller like this is mostly intended for custom or semi-custom open loop water cooling setups, but with very thin thermistors or some host side scripting this could easily be configured to control fan speeds on air cooled systems or systems with AIO liquid coolers.
+
+# Notes
+In order to use the tachometer on all 8 pwm fan channels requires the use of a 74HC4052 analog mux connected as follows
+
+| mux pin | pico pin |
+|---------|----------|
+|    A    |    GP8   |
+|    B    |    GP9   |
+|    X    |    GP11  |
+|    Y    |    GP13  |
