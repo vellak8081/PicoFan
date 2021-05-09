@@ -155,7 +155,7 @@ while True:
         elif mux == True:
             # get tach counts, then set mux channel selection for next measurement
             if mchan == 0:
-                RPM[6] = (tach0.count * 60) # * 60 to account for two pole tach, this is a simplification of count * 120 / 2
+                RPM[3] = (tach0.count * 60) # * 60 to account for two pole tach, this is a simplification of count * 120 / 2
                 RPM[7] = (tach1.count * 60) # it's possible this will have to be configurable for different fan tach types
                 # change mux for next reading
                 muxA.value = false
@@ -166,7 +166,7 @@ while True:
 
             if mchan == 1:
                 RPM[0] = (tach0.count * 60)
-                RPM[1] = (tach1.count * 60)
+                RPM[4] = (tach1.count * 60)
 
                 muxA.value = true
                 muxB.value = false
@@ -175,8 +175,8 @@ while True:
                 tach1.reset()
 
             if mchan == 2:
-                RPM[2] = (tach0.count * 60)
-                RPM[3] = (tach1.count * 60)
+                RPM[1] = (tach0.count * 60)
+                RPM[5] = (tach1.count * 60)
 
                 muxA.value = false
                 muxB.value = true
@@ -185,8 +185,8 @@ while True:
                 tach1.reset()
 
             if mchan == 3:
-                RPM[4] = (tach0.count * 60)
-                RPM[5] = (tach1.count * 60)
+                RPM[2] = (tach0.count * 60)
+                RPM[6] = (tach1.count * 60)
 
                 muxA.value = true
                 muxB.value = true
