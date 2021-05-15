@@ -8,11 +8,30 @@ This firmware is intended to be used to build a high end DIY open source fan con
 - 4 to 8 tachometer/flow meter channels
 - support for up to 2 thermistors for sensing air or liquid temperature
 - fully configurable channel naming
-- fully configurable fan speed curves based on thermistor readings (in development)
+- fully configurable fan speed curves based on thermistor readings
 - fully independant from the host system
 - easily reprogrammable - arguably, that's more a feature of CircuitPython though
 
 A controller like this is mostly intended for custom or semi-custom open loop water cooling setups, but with very thin thermistors or some host side scripting this could easily be configured to control fan speeds on air cooled systems or systems with AIO liquid coolers.
+
+# Fan/PWM Profiles
+All configurable settings as of v0.5 are defined in code.py itself. 
+Fan profiles are defined in the profileTemp, profileDC, and profileSensor lists.
+profileTemp and ProfileDC are lists of lists - with the inner lists corresponding to fan channels in the same order as the fanLabel list.
+
+```python
+profileTemp = [ [0, 30, 40, 50, 60], [0, 30, 40, 50, 60] ]
+profileDC = [ [25, 40, 50, 70, 100], [25, 40, 50, 70, 100] ]
+profileSensor = [ 0, 1 ]
+```
+
+profileTemp defines the temperature setpoints of the curve.
+The first element of each inner list should really be 0, setting a default RPM setting.
+
+profileDC defines the pwm Duty Cycle setpoints of the curve. 
+The first element of each inner list is the initial (default) PWM setting of the corresponding channel, with the last element of each inner list being the max PWM setting.
+
+profileSensor defines which thermistor each PWM channel uses to apply the profile.
 
 # Notes
 In order to use the tachometer on all 8 pwm fan channels requires the use of a 74HC4052 analog mux connected as follows
