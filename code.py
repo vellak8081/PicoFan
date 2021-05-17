@@ -22,11 +22,13 @@ fanLabel = [ "front1", "front2", "front3", "top1", "top2", "top3", "pump1", "pum
 # Fan profile - the profileTemp list is temperatures in degrees celcius, the profileDC list is fan pwm %, mapped to the profileTemp list.
 # The profileSensor list ties a specific pwm channel to a specific temperature sensor, eg, if you have two loops.
 # both lists need to have the same number of elements, corresponding to the fanLabel positions above.
-# if you have 3  pin fans or non-pwm pumps attached for rpm monitoring, make sure they are at the end of the channel chain (eg, two 3 pin pumps in channel 6 and 7)
+# overshoot is the amount in degrees celcius to allow the temp probe to exceed the max fan profile preset before setting channel pwm dutycycle to 100%
+# if you have 3  pin fans or non-pwm pumps attached for rpm monitoring, make sur they are at the end of the channel chain (eg, two 3 pin pumps in channel 6 and 7)
 # these profiles will do nothing for 3 pin devices - there is NO voltage control implemented as of v0.3.
 profileTemp = [ [0, 30, 40, 50, 60], [0, 30, 40, 50, 60] ]
 profileDC = [ [25, 40, 50, 70, 100], [25, 40, 50, 70, 100] ]
-profileSensor = [ 0, 1, 0, 1, 0, 1, 0, 1 ]
+profileSensor = [ 0, 1 ]
+overshoot = 5
 
 # set up tachometer pins and flow sensor pin transition counters
 if mux == False:
@@ -34,7 +36,7 @@ if mux == False:
     tach1 = countio.Counter(board.GP9)
     tach2 = countio.Counter(board.GP11)
     tach3 = countio.Counter(board.GP13)
-    # set up tachometer arrays for pulse counts and calculated rpm
+    # set up tachometer arrays for calculated rpm
     RPM = [0, 0, 0, 0]
 elif mux == True:
     # set up two tach input channels that our 74HC4052 mux will connect to
@@ -43,6 +45,10 @@ elif mux == True:
     # mux control pins - the 74HC4052 is a dual pole quad throw mux, so 8 tachometers can be sampled two at a time, in 4 pairs
     muxA = digitalio.DigitalInOut(board.GP8)
     muxB = digitalio.DigitalInOut(board.GP9)
+
+    muxA.direction = digitalio.Direction.OUTPUT
+    muxB.direction = digitalio.Direction.OUTPUT
+
     RPM = [0, 0, 0, 0, 0, 0, 0, 0]
     mchan = 0 #used in the main loop for a mini state machine to cycle through mux channels
 
@@ -77,7 +83,8 @@ therm0 = analogio.AnalogIn(board.A0)
 therm1 = analogio.AnalogIn(board.A1)
 
 # thermistor temp storage
-temp = [0.0, 0.0]
+temp = [ [0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0] ] # array for averaging/smoothing to prevent fan revving
+tavg = [0.0, 0.0] #averaged temps
 
 # get time
 initial = time.monotonic()
@@ -90,22 +97,42 @@ def temperature(r, Ro=10000.0, To=25.0, beta=3950.0):
     return cel
 
 def Pct2val(pct):
-    import math
-    val = int(int(pct) * 65535 / 100)
+    val = int(pct * 65535 / 100)
+    return val
+
+def ReadTherm(chan):
+    import analogio
+    rotated = [ 0.0, temp[chan][0], temp[chan][1], temp[chan][2] ]
+    if chan == 0:
+        rotated[0] = temperature(1000/(65535/therm0.value - 1))
+    if chan == 1:
+        rotated[0] = temperature(1000/(65535/therm1.value - 1))
+    temp[chan] = rotated
+    val = (temp[chan][0] + temp[chan][1] + temp[chan][2] + temp[chan][3]) / 4
     return val
 
 def ReadProfile(fan):
-    index = 0
-    while index <= 3  # cycle through the fan profile value lists
-        if profileTemp[fan][index] => temp[0] => profileTemp[fan][index + 1]:  # compare current index to the next index
-            fromSpan = profileTemp[fan][index + 1] - profileTemp[fan][index]   # build a value map
+    probe = profileSensor[fan]
+    # temp is out of bounds of the profile.
+    if ( tavg[probe] >= profileTemp[fan][4] ):
+        # if the temperature is more than the overshoot value above the max set temp...
+        if ( tavg[probe] >= ( profileTemp[fan][4] + overshoot )):
+            return 100
+        else:
+            # set channel to full speed if we're above overshoot threshold, else set channel to max permitted in profile
+            return profileDC[fan][4]
+    # cycle through the fan profile value lists
+    for index in range(4):
+        # compare current index to the next index
+        if ( profileTemp[fan][index] <= tavg[probe] <= profileTemp[fan][index + 1] ):
+            # build a value map
+            fromSpan = profileTemp[fan][index + 1] - profileTemp[fan][index]
             toSpan = profileDC[fan][index + 1] - profileDC[fan][index]
-
-            Scaled = float(temp[ profileSensor[fan] ] - profileTemp[fan][index]) / float(fromSpan) # calculate a scale factor for PWM value
-
-            return int(profileDC[fan][index] + ( Scaled * toSpan )) # calculate and return the scaled pwm value
-
-        index += 1
+            # calculate a scale factor for PWM value
+            Scaled = float(tavg[probe] - profileTemp[fan][index]) / float(fromSpan)
+            # calculate and return the scaled pwm value
+            val = int(profileDC[fan][index] + (Scaled * toSpan))
+            return val
 
 # main loop
 while True:
@@ -121,13 +148,13 @@ while True:
         # print fan duty cycle, fan rpm
         if inText.lower().startswith("*"):
             print("Fan#    %DC    RPM")
-            for f in range(maxch):
+            for f in range(maxch + 1):
                 if (mux == False and f <= 2) or mux == True:
-                    print(f'{fanLabel[f]}: {fandc[f]}%  {RPM[f]} RPM')
+                    print(f'{fanLabel[f]}: {fandc[f]}% {RPM[f]} RPM')
                 elif mux == False and f >= 3:
                     print(f'{fanLabel[f]}: {fandc[f]}%')
-            for t in range(1):
-                print(f'{thermLabel[t]}: {temp[t]} C')
+            for t in range(2):
+                print(f'{thermLabel[t]}: {tavg[t]} C')
 
         # choose fan to manipulate - if not given, all fans will be set to the same speed
         if inText.lower().startswith("@"):
@@ -136,11 +163,11 @@ while True:
         # set fan speed with a "%" symbol
         if inText.startswith("%"):
             pctText = inText[1:]
-            spd = Pct2val(int(pcText)
+            spd = Pct2val(pctText)
 
-            if ((fanNumber < 0) or (fanNumber > maxch)):
+            if not 0 < fanNumber < maxch:
                 # when no fan selected, or selection out of range, adjust speed of all fans
-                for i in range(maxch):
+                for i in range(maxch + 1):
                     fandc[i] = pctText
                     fanSpeed[i] = spd
 
@@ -161,19 +188,19 @@ while True:
             fan6.duty_cycle = fanSpeed[6]
             fan7.duty_cycle = fanSpeed[7]
 
-    for f in range(maxch):
+    for f in range(maxch + 1):
         try:
-            fanDC[f] = ReadProfile(f)
-            fanSpeed[f] = Pct2val(fanDC[f])
+            fandc[f] = ReadProfile(f)
+            fanSpeed[f] = Pct2val(fandc[f])
         except:
-            False
+            pass
 
     # time, flies like an arrow
     now = time.monotonic()
 
     # get fan speeds twice a second
     if now - initial > 0.500:
-        # read and then clear tach and flowrate counts
+        # read and then clear tach counts
 
         if mux == False:
             RPM[0] = (tach0.count * 60) # * 60 to account for two pole tach, this is a simplification of count * 120 / 2
@@ -232,9 +259,10 @@ while True:
             else:
                 mchan = 0
 
-        # read temp sensors
-        temp[0] = temperature(1000/(65535/therm0.value - 1))
-        temp[1] = temperature(1000/(65535/therm1.value - 1))
+        # rotate arrays and read temp sensors
+
+        tavg[0] = ReadTherm(0)
+        tavg[1] = ReadTherm(1)
 
         # reset timer reference
         initial = now
