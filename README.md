@@ -34,6 +34,10 @@ The first element of each inner list is the initial (default) PWM setting of the
 profileSensor defines which thermistor each PWM channel uses to apply the profile.
 
 # Notes
+This is considered to be Alpha software. Use at your own risk, I take no responsibility for your actions or your system if you use this firmware and you overheat your system due to a bug or improper operation. 
+
+Default fan curves are semi-sane, but you should set your own curves before using.
+
 In order to use the tachometer on all 8 pwm fan channels requires the use of a 74HC4052 analog mux connected as follows
 
 | mux pin | pico pin |
