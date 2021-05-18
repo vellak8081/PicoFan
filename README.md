@@ -17,12 +17,22 @@ A controller like this is mostly intended for custom or semi-custom open loop wa
 # Fan/PWM Profiles
 All configurable settings as of v0.5 are defined in code.py itself. 
 Fan profiles are defined in the profileTemp, profileDC, and profileSensor lists.
-profileTemp and ProfileDC are lists of lists - with the inner lists corresponding to fan channels in the same order as the fanLabel list.
+'profileTemp' and 'ProfileDC' are lists of lists - with the inner lists corresponding to fan channels in the same order as the fanLabel list.
+'profileTemp' defines the temperature part of the curve in degrees Celcius.
+'profileDC' defines the PWM Duty Cycle at a given temperature within the curve, in percent.
+
+There is simple linear interpolation implemented in the fan curve profile follower function - so there won't be massive RPM changes with small temperature changes (unless you've set a large delta between steps), but it won't be a perfectly smooth curve either.
+
+'profileSensor' defines which temperature sensor the given pwm channel uses for its temperature source when following the given fan curve.
+'overshoot' is the amount by which the sensed temperature can exceed the max temperature set in the fan curve before the controller forces the fan to 100% duty cycle, in degrees celcius.
 
 ```python
+thermLabel = [ "Rad in", "Rad out" ]
+fanLabel = [ "front1", "front2", "front3", "top1", "top2", "top3", "pump1", "pump2" ]
 profileTemp = [ [0, 30, 40, 50, 60], [0, 30, 40, 50, 60] ]
 profileDC = [ [25, 40, 50, 70, 100], [25, 40, 50, 70, 100] ]
 profileSensor = [ 0, 1 ]
+overshoot = 5
 ```
 
 profileTemp defines the temperature setpoints of the curve.
