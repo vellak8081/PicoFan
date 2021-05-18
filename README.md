@@ -52,6 +52,8 @@ This is considered to be Alpha software. Use at your own risk, I take no respons
 
 Default fan curves are semi-sane, but you should set your own curves before using.
 
+Without Muxes, only 6 PWM output channels are supported.
+
 In order to use the tachometer on all 8 pwm fan channels requires the use of a 74HC4052 analog mux connected as follows
 
 | tach mux pin | pico pin |
