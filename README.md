@@ -5,11 +5,12 @@ This firmware is intended to be used to build a high end DIY open source fan con
 
 # Features
 - 6 to 8 PWM fan control channels
-- 4 to 8 tachometer/flow meter channels
-- support for up to 2 thermistors for sensing air or liquid temperature
-- fully configurable channel naming
+- 4 tachometer/flow meter channels without additional hardware, or up to 8 tachometer channels with an additional mux
+- support for up to 2 thermistors without additional hardware, or up to 8 thermistors with an additional mux
+- fully configurable fan and thermistor channel naming
 - fully configurable fan speed curves based on thermistor readings
 - fully independant from the host system
+- interactive interface for listing current state
 - easily reprogrammable - arguably, that's more a feature of CircuitPython though
 
 A controller like this is mostly intended for custom or semi-custom open loop water cooling setups, but with very thin thermistors or some host side scripting this could easily be configured to control fan speeds on air cooled systems or systems with AIO liquid coolers.
@@ -50,9 +51,18 @@ Default fan curves are semi-sane, but you should set your own curves before usin
 
 In order to use the tachometer on all 8 pwm fan channels requires the use of a 74HC4052 analog mux connected as follows
 
-| mux pin | pico pin |
+| tach mux pin | pico pin |
 |---------|----------|
 |    A    |    GP8   |
 |    B    |    GP9   |
 |    X    |    GP11  |
 |    Y    |    GP13  |
+
+The mux for thermistors is wired similarly, and uses the exact same 74HC4052 analog mux. Both muxes share the same control lines
+
+| therm mux pin | pico pin |
+|---------|----------|
+|    A    |    GP8   |
+|    B    |    GP9   |
+|    X    |    GP26 (A0)  |
+|    Y    |    GP27 (A1)  |
