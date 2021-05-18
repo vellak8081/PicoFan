@@ -38,14 +38,14 @@ overshoot = 5
 #### SETTINGS END HERE ####
 
 # set up tachometer pins and flow sensor pin transition counters
-if mux == False:
+if not tach_mux:
     tach0 = countio.Counter(board.GP7)
     tach1 = countio.Counter(board.GP9)
     tach2 = countio.Counter(board.GP11)
     tach3 = countio.Counter(board.GP13)
     # set up tachometer arrays for calculated rpm
     RPM = [0, 0, 0, 0]
-elif tach_mux == True:
+elif tach_mux:
     # set up two tach input channels that our 74HC4052 mux will connect to
     tach0 = countio.Counter(board.GP11)
     tach1 = countio.Counter(board.GP13)
@@ -70,7 +70,7 @@ fan3 = pwmio.PWMOut(board.GP3, frequency=freq, duty_cycle=spd)
 fan4 = pwmio.PWMOut(board.GP4, frequency=freq, duty_cycle=spd)
 fan5 = pwmio.PWMOut(board.GP5, frequency=freq, duty_cycle=spd)
 
-if tach_mux == True:
+if tach_mux:
     maxch = 7
     fan6 = pwmio.PWMOut(board.GP6, frequency=freq, duty_cycle=spd)
     fan7 = pwmio.PWMOut(board.GP7, frequency=freq, duty_cycle=spd)
@@ -79,7 +79,7 @@ if tach_mux == True:
     fandc = [pct, pct, pct, pct, pct, pct, pct, pct]
     fanSpeed = [spd, spd, spd, spd, spd, spd, spd, spd]
 
-elif tach_mux == False:
+elif not tach_mux:
     maxch = 5
     # initialize fanspeed and dutycycle array
     fandc = [pct, pct, pct, pct, pct, pct]
@@ -90,12 +90,12 @@ therm0 = analogio.AnalogIn(board.A0)
 therm1 = analogio.AnalogIn(board.A1)
 
 # thermistor temp storage
-if therm_mux == False:
+if not therm_mux:
     temp = [ [0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0] ] # array for averaging/smoothing to prevent fan revving
     tavg = [0.0, 0.0] #averaged temps
     maxtherm = 1
     
-if therm_mux == True:
+if therm_mux:
     # array for averaging/smoothing to prevent fan revving
     temp = [ [0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0] ]
     tavg = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0] #averaged temps
