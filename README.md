@@ -19,17 +19,7 @@ A controller like this is mostly intended for custom or semi-custom open loop wa
 All configurable settings as of v0.7 are defined in code.py itself. 
 Fan profiles are defined in the profileTemp, profileDC, and profileSensor lists.
 'profileTemp' and 'ProfileDC' are lists of lists - with the inner lists corresponding to fan channels in the same order as the fanLabel list.
-'profileTemp' defines the temperature part of the curve in degrees Celcius.
-'profileDC' defines the PWM Duty Cycle at a given temperature within the curve, in percent.
 'tach_mux' and 'therm_mux' indicate if the muxes are present
-
-There is simple linear interpolation implemented in the fan curve profile follower function - so there won't be massive RPM changes with small temperature changes (unless you've set a large delta between steps), but it won't be a perfectly smooth curve either.
-
-'profileSensor' defines which temperature sensor the given pwm channel uses for its temperature source when following the given fan curve.
-'overshoot' is the amount by which the sensed temperature can exceed the max temperature set in the fan curve before the controller forces the fan to 100% duty cycle, in degrees celcius.
-
-The way the profile function is set up, if the sensed temperature is below the first element in the profileTemp list for that channel, the channel will be set to the duty cycle defined as the lowest in the profile. 
-If you want your fans to be off below a set temperature, set the lowest duty cycle to between 1-5%, most fans won't spin at such a low PWM duty cycle.
 
 ```python
 tach_mux = True
@@ -42,13 +32,20 @@ profileSensor = [ 0, 1 ]
 overshoot = 5
 ```
 
-profileTemp defines the temperature setpoints of the curve.
-The first element of each inner list should really be 0, setting a default RPM setting.
+'profileTemp' defines the temperature setpoints of the curve, in degrees celcius.
+The first element of each inner list should really be 0, setting a default RPM setting, and allowing the controller to interpolate between there and the next point. The way the profile function is set up, if the sensed temperature is below the first element in the profileTemp list for that channel, the channel will be set to the duty cycle defined as the lowest in the profile. 
 
-profileDC defines the pwm Duty Cycle setpoints of the curve. 
+profileDC defines the pwm Duty Cycle setpoints of the curve, in percent. 
 The first element of each inner list is the initial (default) PWM setting of the corresponding channel, with the last element of each inner list being the max PWM setting.
 
-profileSensor defines which thermistor each PWM channel uses to apply the profile.
+There is simple linear interpolation implemented in the fan curve profile follower function - so there won't be massive RPM changes with small temperature changes (unless you've set a large delta between steps), but it won't be a perfectly smooth curve either.
+
+'profileSensor' defines which temperature sensor the given pwm channel uses for its temperature source when following the given fan curve.
+'overshoot' is the amount by which the sensed temperature can exceed the max temperature set in the fan curve before the controller forces the fan to 100% duty cycle, in degrees celcius.
+
+If you want your fans to be off below a set temperature, set the lowest duty cycle to between 1-5% as most fans won't spin at such a low PWM duty cycle. Set the second lowest temperature in the profile to the temp you want your fans to turn on at, and set the lowest temperature slightly below that, about 5c should be right. Your second pwm duty cycle definition should be over 25% to ensure your fans spin up. 
+
+You do lose a bit of your curve by doing this, but with interpolation, you probably won't notice much.
 
 # Notes
 This is considered to be Alpha software. Use at your own risk, I take no responsibility for your actions or your system if you use this firmware and you overheat your system due to a bug or improper operation. 
