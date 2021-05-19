@@ -16,7 +16,9 @@ This firmware is intended to be used to build a high end DIY open source fan con
 A controller like this is mostly intended for custom or semi-custom open loop water cooling setups, but with very thin thermistors or some host side scripting this could easily be configured to control fan speeds on air cooled systems or systems with AIO liquid coolers.
 
 # Fan/PWM Profiles
-All configurable settings as of v0.7 are defined in boot.py itself. 
+All configurable settings as of v0.8 are no longer defined in boot.py itself. 
+They have now been moved to config.py to allow for easier interfacing by config generators, and makes things a little more user friendly.
+
 Fan profiles are defined in the profileTemp, profileDC, and profileSensor lists.
 'profileTemp' and 'ProfileDC' are lists of lists - with the inner lists corresponding to fan channels in the same order as the fanLabel list.
 'tach_mux' and 'therm_mux' indicate if the muxes are present

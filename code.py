@@ -1,4 +1,4 @@
-# Kienan Vella's PicoFan V0.7
+# Kienan Vella's PicoFan V0.8
 # A digital PWM fan controller implemented in CircuitPython, interfaced over usb serial.
 # Targeted at the pi pico, but readily adapdable to other MCUs.
 
