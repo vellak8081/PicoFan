@@ -1,11 +1,13 @@
-# settings
-# without a mux, there are 6 channels of pwm out, with 4 of them having speed sensors
-# with a mux for tachometers, you can have up to 8 channels with pwm out, and all 8 of them can have speed sensors.
-# without a mux, there are 2 thermistor channels.
-# with a mux connected for thermistors, you can have up to 8 thermistors.
+# Settings
 
-tach_mux = True # only set this to true if you have a 74HC4052 connected to expand the number of tachometer channels.
-therm_mux = False # only set this to true if you have a 74HC4052 connected to expand the number of thermistor channels.
+# If you have DS18B20 digital temperature sensors attached to the dtherm 3 pin header, these are defined in order from the controller.
+# If your board has a sensor on it, that sensor will show before these, and is automatically listed as "Interior".
+DthermLabel = [ "Intake", "Exhaust" ]
+
+# If you would like to override the default label for the onboard sensor
+# (eg, if you put the board in your case's PSU basement), uncomment the following line
+#DthermLabelOverride = True
+
 thermLabel = [ "Loop 1", "Loop 2", "Ambient", "CPU", "CPU VRM", "Chipset", "GPU", "GPU VRM"  ] # there should be 2 labels here, or 8 if you have a thermistor mux.
 fanLabel = [ "front1", "front2", "front3", "top1", "top2", "top3", "pump1", "pump2" ]  # there should be 6 labels here, or 8 if you have a tachometer mux connected.
 
@@ -15,7 +17,7 @@ fanLabel = [ "front1", "front2", "front3", "top1", "top2", "top3", "pump1", "pum
 # ProfileSensor values should be 0 to 1 when there's no mux, and 0 to 7 when there is a mux in use.
 # overshoot is the amount in degrees celcius to allow the temp probe to exceed the max fan profile preset before setting channel pwm dutycycle to 100%
 # if you have 3  pin fans or non-pwm pumps attached for rpm monitoring, make sur they are at the end of the channel chain (eg, two 3 pin pumps in channel 6 and 7)
-# these profiles will do nothing for 3 pin devices - there is NO voltage control implemented as of v0.3.
+# these profiles will do nothing for 3 pin devices - there is NO voltage control implemented as of v0.8.
 profileTemp = [ [0, 30, 40, 50, 60], [0, 30, 40, 50, 60] ]
 profileDC = [ [25, 40, 50, 70, 100], [25, 40, 50, 70, 100] ]
 profileSensor = [ 0, 1 ]

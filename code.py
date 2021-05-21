@@ -5,6 +5,7 @@
 import board
 import supervisor
 import config
+import bconf
 import time
 import math
 import analogio
@@ -12,15 +13,27 @@ import digitalio
 import countio
 import pwmio
 
+# if our board has a DS18B20 onboard, set it up
+if bconf.digitalTemp:
+    from adafruit_onewire.bus import OneWireBus
+    import adafruit_ds18x20
+    ow_bus = OneWireBus(board.GP22)
+    devices = ow_bus.scan()
+    dtnum = 0
+    for device in devices:
+        if device.family_code == 40:
+            dtempSensor[dtnum] = adafruit_ds18x20.DS18X20(ow_bus, devices[dtnum])
+            dtnum += 1 #count number of devices
+
 # set up tachometer pins and flow sensor pin transition counters
-if not config.tach_mux:
+if not bconf.tach_mux:
     tach0 = countio.Counter(board.GP7)
     tach1 = countio.Counter(board.GP9)
     tach2 = countio.Counter(board.GP11)
     tach3 = countio.Counter(board.GP13)
     # set up tachometer arrays for calculated rpm
     RPM = [0, 0, 0, 0]
-elif config.tach_mux:
+elif bconf.tach_mux:
     # set up two tach input channels that our 74HC4052 mux will connect to
     tach0 = countio.Counter(board.GP11)
     tach1 = countio.Counter(board.GP13)
@@ -34,6 +47,15 @@ elif config.tach_mux:
     RPM = [0, 0, 0, 0, 0, 0, 0, 0]
     mchan = 0 #used in the main loop for a mini state machine to cycle through mux channels
 
+# populate any unlabeled fan channels with a default label
+newlabel = {}
+for f in RPM
+    try:
+    	newlabel[f - 1] = fanLabel[f - 1]
+    except:
+    	newlabel[f - 1] = "Fan" + str(f - 1)
+fanLabel = newlabel
+
 # pwm out setup
 freq = 1000
 pct = config.defdc
@@ -45,7 +67,7 @@ fan3 = pwmio.PWMOut(board.GP3, frequency=freq, duty_cycle=spd)
 fan4 = pwmio.PWMOut(board.GP4, frequency=freq, duty_cycle=spd)
 fan5 = pwmio.PWMOut(board.GP5, frequency=freq, duty_cycle=spd)
 
-if config.tach_mux:
+if bconf.tach_mux:
     maxch = 7
     fan6 = pwmio.PWMOut(board.GP6, frequency=freq, duty_cycle=spd)
     fan7 = pwmio.PWMOut(board.GP7, frequency=freq, duty_cycle=spd)
@@ -54,7 +76,7 @@ if config.tach_mux:
     fandc = [pct, pct, pct, pct, pct, pct, pct, pct]
     fanSpeed = [spd, spd, spd, spd, spd, spd, spd, spd]
 
-elif not config.tach_mux:
+elif not bconf.tach_mux:
     maxch = 5
     # initialize fanspeed and dutycycle array
     fandc = [pct, pct, pct, pct, pct, pct]
@@ -65,16 +87,37 @@ therm0 = analogio.AnalogIn(board.A0)
 therm1 = analogio.AnalogIn(board.A1)
 
 # thermistor temp storage
-if not config.therm_mux:
+if not bconf.therm_mux:
     temp = [ [0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0] ] # array for averaging/smoothing to prevent fan revving
     tavg = [0.0, 0.0] #averaged temps
     maxtherm = 1
-    
-if config.therm_mux:
+
+if bconf.therm_mux:
     # array for averaging/smoothing to prevent fan revving
     temp = [ [0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0] ]
     tavg = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0] #averaged temps
     maxtherm = 7
+
+# populate any unlabeled thermistor channels with a default label
+newlabel = {}
+for f in range(maxtherm + 1):
+    try:
+    	newlabel[f - 1] = thermLabel[f - 1]
+    except:
+    	newlabel[f - 1] = "Temp" + str(f - 1)
+tempLabel = newlabel
+
+# populate unfilled labels for digital temp sensors
+if bconf.digitalTemp and bconf.DtempOnboard:
+    if not config.DthermLabelOverride:
+        newLabel = {}
+        newLabel[0] = "Interior"
+        for i in range(Dtnum + 1):
+            try:
+                newLabel[i] = DthermLabel[i - 1]
+            except:
+                newLabel[i] = "Temp" + str(maxtherm + i)
+        DthermLabel = newLabel
 
 # get time
 initial = time.monotonic()
@@ -93,9 +136,9 @@ def Pct2val(pct):
 def ReadATherm(chan):
     import analogio
     rotated = [ 0.0, temp[chan][0], temp[chan][1], temp[chan][2] ]
-    if (chan == 0 and not config.therm_mux) or (0 <= chan <= 3 and config.therm_mux):
+    if (chan == 0 and not bconf.therm_mux) or (0 <= chan <= 3 and bconf.therm_mux):
         rotated[0] = temperature(1000/(65535/therm0.value - 1))
-    if (chan == 1 and not config.therm_mux) or (4 <= chan <= 7 and config.therm_mux):
+    if (chan == 1 and not bconf.therm_mux) or (4 <= chan <= 7 and bconf.therm_mux):
         rotated[0] = temperature(1000/(65535/therm1.value - 1))
     temp[chan] = rotated
     val = (temp[chan][0] + temp[chan][1] + temp[chan][2] + temp[chan][3]) / 4
@@ -142,9 +185,9 @@ while True:
         if inText.lower().startswith("*"):
             print("Fan#    %DC    RPM")
             for f in range(maxch + 1):
-                if (config.tach_mux == False and f <= 2) or config.tach_mux == True:
+                if (bconf.tach_mux == False and f <= 2) or bconf.tach_mux == True:
                     print(f'{config.fanLabel[f]}: {fandc[f]}% {RPM[f]} RPM')
-                elif config.tach_mux == False and f >= 3:
+                elif bconf.tach_mux == False and f >= 3:
                     print(f'{config.fanLabel[f]}: {fandc[f]}%')
             for t in range(maxtherm + 1):
                 print(f'{config.thermLabel[t]}: {tavg[t]} C')
@@ -177,7 +220,7 @@ while True:
         fan3.duty_cycle = fanSpeed[3]
         fan4.duty_cycle = fanSpeed[4]
         fan5.duty_cycle = fanSpeed[5]
-        if config.tach_mux == True:
+        if bconf.tach_mux == True:
             fan6.duty_cycle = fanSpeed[6]
             fan7.duty_cycle = fanSpeed[7]
 
@@ -195,7 +238,7 @@ while True:
     if now - initial > 0.500:
         # read and then clear tach counts
 
-        if not config.tach_mux:
+        if not bconf.tach_mux:
             RPM[0] = (tach0.count * 60) # * 60 to account for two pole tach, this is a simplification of count * 120 / 2
             tach0.reset()                  # it's possible this will have to be configurable for different fan tach types
             RPM[1] = (tach1.count * 60)
@@ -205,22 +248,22 @@ while True:
             RPM[3] = (tach3.count * 60)
             tach3.reset()
 
-        if not config.therm_mux:
+        if not bconf.therm_mux:
             # rotate arrays and read temp sensors
             tavg[0] = ReadATherm(0)
             tavg[1] = ReadATherm(1)
 
-        if config.tach_mux or config.therm_mux:
+        if bconf.tach_mux or bconf.therm_mux:
             # get tach counts, then set mux channel selection for next measurement
             if mchan == 0:
-                if config.tach_mux:
+                if bconf.tach_mux:
                     RPM[3] = (tach0.count * 60) # * 60 to account for two pole tach, this is a simplification of count * 120 / 2
                     RPM[7] = (tach1.count * 60) # it's possible this will have to be configurable for different fan tach types
-                
-                if config.therm_mux:
+
+                if bconf.therm_mux:
                     tavg[3] = ReadATherm(3)
                     tavg[7] = ReadATherm(7)
-                
+
             # change muxes for next reading.
             # this is slightly confusing at first glance, but what's going on here is:
             # because we are using countio to read the tach transitions, we need to leave
@@ -229,57 +272,57 @@ while True:
             # first, then reconfigure for the next run, and finally reset the counters.
                 muxA.value = False
                 muxB.value = False
- 
-                if config.tach_mux:
+
+                if bconf.tach_mux:
                     # reset tach counts
                     tach0.reset()
                     tach1.reset()
 
             if mchan == 1:
-                if config.tach_mux:
+                if bconf.tach_mux:
                     RPM[0] = (tach0.count * 60)
                     RPM[4] = (tach1.count * 60)
-                
-                if config.therm_mux:
+
+                if bconf.therm_mux:
                     tavg[0] = ReadATherm(0)
                     tavg[4] = ReadATherm(4)
 
                 muxA.value = True
                 muxB.value = False
-                
-                if config.tach_mux:
+
+                if bconf.tach_mux:
                     tach0.reset()
                     tach1.reset()
 
             if mchan == 2:
-                if config.tach_mux:
+                if bconf.tach_mux:
                     RPM[1] = (tach0.count * 60)
                     RPM[5] = (tach1.count * 60)
-                
-                if config.therm_mux:
+
+                if bconf.therm_mux:
                     tavg[1] = ReadATherm(1)
                     tavg[5] = ReadATherm(5)
-                
+
                 muxA.value = False
                 muxB.value = True
-                
-                if config.tach_mux:
+
+                if bconf.tach_mux:
                     tach0.reset()
                     tach1.reset()
 
             if mchan == 3:
-                if config.tach_mux:
+                if bconf.tach_mux:
                     RPM[2] = (tach0.count * 60)
                     RPM[6] = (tach1.count * 60)
-                
-                if config.therm_mux:
+
+                if bconf.therm_mux:
                     tavg[2] = ReadATherm(2)
                     tavg[6] = ReadATherm(6)
 
                 muxA.value = True
                 muxB.value = True
-                
-                if config.tach_mux:
+
+                if bconf.tach_mux:
                     tach0.reset()
                     tach1.reset()
 
