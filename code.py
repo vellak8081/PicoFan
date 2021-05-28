@@ -1,11 +1,10 @@
-# Kienan Vella's PicoFan V0.8
+# Kienan Vella's PicoFan V0.9
 # A digital PWM fan controller implemented in CircuitPython, interfaced over usb serial.
 # Targeted at the pi pico, but readily adapdable to other MCUs.
 
 import board
 import supervisor
-import config
-import bconf
+import microcontroller
 import time
 import math
 import analogio
@@ -13,17 +12,30 @@ import digitalio
 import countio
 import pwmio
 
+# import our config files
+import config
+import bconf
+
 # if our board has a DS18B20 onboard, set it up
 if bconf.digitalTemp:
     from adafruit_onewire.bus import OneWireBus
-    import adafruit_ds18x20
+    from adafruit_ds18x20 import DS18X20
     ow_bus = OneWireBus(board.GP22)
     devices = ow_bus.scan()
+    tempDigital = {}
     dtnum = 0
     for device in devices:
         if device.family_code == 40:
             dtempSensor[dtnum] = adafruit_ds18x20.DS18X20(ow_bus, devices[dtnum])
             dtnum += 1 #count number of devices
+
+if bconf.tach_mux or bconf.therm_mux:
+    # mux control pins - the 74HC4052 is a dual pole quad throw mux, so 8 tachometers can be sampled two at a time, in 4 pairs
+    muxA = digitalio.DigitalInOut(board.GP8)
+    muxB = digitalio.DigitalInOut(board.GP10)
+
+    muxA.direction = digitalio.Direction.OUTPUT
+    muxB.direction = digitalio.Direction.OUTPUT
 
 # set up tachometer pins and flow sensor pin transition counters
 if not bconf.tach_mux:
@@ -33,23 +45,18 @@ if not bconf.tach_mux:
     tach3 = countio.Counter(board.GP13)
     # set up tachometer arrays for calculated rpm
     RPM = [0, 0, 0, 0]
+
 elif bconf.tach_mux:
     # set up two tach input channels that our 74HC4052 mux will connect to
     tach0 = countio.Counter(board.GP11)
     tach1 = countio.Counter(board.GP13)
-    # mux control pins - the 74HC4052 is a dual pole quad throw mux, so 8 tachometers can be sampled two at a time, in 4 pairs
-    muxA = digitalio.DigitalInOut(board.GP8)
-    muxB = digitalio.DigitalInOut(board.GP9)
-
-    muxA.direction = digitalio.Direction.OUTPUT
-    muxB.direction = digitalio.Direction.OUTPUT
 
     RPM = [0, 0, 0, 0, 0, 0, 0, 0]
     mchan = 0 #used in the main loop for a mini state machine to cycle through mux channels
 
 # populate any unlabeled fan channels with a default label
 newlabel = {}
-for f in RPM
+for f in RPM:
     try:
     	newlabel[f - 1] = fanLabel[f - 1]
     except:
@@ -108,16 +115,16 @@ for f in range(maxtherm + 1):
 tempLabel = newlabel
 
 # populate unfilled labels for digital temp sensors
-if bconf.digitalTemp and bconf.DtempOnboard:
-    if not config.DthermLabelOverride:
+if bconf.digitalTemp:
+    if bconf.DtempOnBoard and not config.DthermLabelOverride:
         newLabel = {}
         newLabel[0] = "Interior"
-        for i in range(Dtnum + 1):
+        for i in range(dtnum + 1):
             try:
-                newLabel[i] = DthermLabel[i - 1]
+                newLabel[i + 1] = config.DthermLabel[i]
             except:
-                newLabel[i] = "Temp" + str(maxtherm + i)
-        DthermLabel = newLabel
+                newLabel[i + 1] = "Temp" + str(maxtherm + 1 + i)
+        config.DthermLabel = newLabel
 
 # get time
 initial = time.monotonic()
@@ -185,12 +192,18 @@ while True:
         if inText.lower().startswith("*"):
             print("Fan#    %DC    RPM")
             for f in range(maxch + 1):
-                if (bconf.tach_mux == False and f <= 2) or bconf.tach_mux == True:
+                if (not bconf.tach_mux and f <= 2) or bconf.tach_mux:
                     print(f'{config.fanLabel[f]}: {fandc[f]}% {RPM[f]} RPM')
-                elif bconf.tach_mux == False and f >= 3:
+                elif not bconf.tach_mux and f >= 3:
                     print(f'{config.fanLabel[f]}: {fandc[f]}%')
             for t in range(maxtherm + 1):
                 print(f'{config.thermLabel[t]}: {tavg[t]} C')
+            for dt in range(dtnum + 1):
+                print(f'{config.DthermLabel[dt]}: {tempDigital[dt]} C')
+
+        # reload config
+        if inText.lower().startswith("r"):
+            microcontroller.reset()
 
         # choose fan to manipulate - if not given, all fans will be set to the same speed
         if inText.lower().startswith("@"):
@@ -234,8 +247,13 @@ while True:
     # time, flies like an arrow
     now = time.monotonic()
 
-    # get fan speeds twice a second
+    # get fan speeds and temps twice a second
     if now - initial > 0.500:
+
+        if bconf.digitalTemp:
+            for i in range(dtnum + 1):
+                tempDigital[i] = dtempSensor[i].temperature
+
         # read and then clear tach counts
 
         if not bconf.tach_mux:
