@@ -39,10 +39,10 @@ if bconf.tach_mux or bconf.therm_mux:
 
 # set up tachometer pins and flow sensor pin transition counters
 if not bconf.tach_mux:
-    tach0 = countio.Counter(board.GP7)
-    tach1 = countio.Counter(board.GP9)
-    tach2 = countio.Counter(board.GP11)
-    tach3 = countio.Counter(board.GP13)
+    tach0 = countio.Counter(board.GP11)
+    tach1 = countio.Counter(board.GP13)
+    tach2 = countio.Counter(board.GP7)
+    tach3 = countio.Counter(board.GP9)
     # set up tachometer arrays for calculated rpm
     RPM = [0, 0, 0, 0]
 
