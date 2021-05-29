@@ -11,6 +11,7 @@ This firmware is intended to be used to build a high end DIY open source fan con
 - fully configurable fan speed curves based on thermistor readings
 - fully independant from the host system
 - interactive interface for listing current state
+- experimental support for multiple Dallas/Maxim DS18b20 digital temperature sensors
 - easily reprogrammable - arguably, that's more a feature of CircuitPython though
 
 A controller like this is mostly intended for custom or semi-custom open loop water cooling setups, but with very thin thermistors or some host side scripting this could easily be configured to control fan speeds on air cooled systems or systems with AIO liquid coolers.
@@ -21,11 +22,8 @@ They have now been moved to config.py to allow for easier interfacing by config 
 
 Fan profiles are defined in the profileTemp, profileDC, and profileSensor lists.
 'profileTemp' and 'ProfileDC' are lists of lists - with the inner lists corresponding to fan channels in the same order as the fanLabel list.
-'tach_mux' and 'therm_mux' indicate if the muxes are present
 
 ```python
-tach_mux = True
-therm_mux = False
 thermLabel = [ "Rad in", "Rad out" ]
 fanLabel = [ "front1", "front2", "front3", "top1", "top2", "top3", "pump1", "pump2" ]
 profileTemp = [ [0, 30, 40, 50, 60], [0, 30, 40, 50, 60] ]
@@ -48,6 +46,18 @@ There is simple linear interpolation implemented in the fan curve profile follow
 If you want your fans to be off below a set temperature, set the lowest duty cycle to between 1-5% as most fans won't spin at such a low PWM duty cycle. Set the second lowest temperature in the profile to the temp you want your fans to turn on at, and set the lowest temperature slightly below that, about 5c should be right. Your second pwm duty cycle definition should be over 25% to ensure your fans spin up. 
 
 You do lose a bit of your curve by doing this, but with interpolation, you probably won't notice much.
+
+# Board features
+Board specific configuration options have been moved to bconf.py as of 0.9
+'tach_mux' and 'therm_mux' indicate if the muxes are present.
+'digitalTemp' indicates if you are using DS18b20 digital temperature sensors (experimental support).
+'DtempOnboard' indicates if your board has a DS18b20 soldered to the fan controller board.
+```python
+tach_mux = True
+therm_mux = False
+digitalTemp = False
+DtempOnboard = False
+```
 
 # Notes
 This is considered to be Alpha software. Use at your own risk, I take no responsibility for your actions or your system if you use this firmware and you overheat your system due to a bug or improper operation. 
