@@ -58,6 +58,8 @@ therm_mux = False
 digitalTemp = False
 DtempOnboard = False
 ```
+# Hardware
+There's currently no official hardware available, but there is a reference hardware design being worked on over on CircuitMaker: https://workspace.circuitmaker.com/Projects/Details/KienanVella/PicoFan-v1
 
 # Notes
 This is considered to be Alpha software. Use at your own risk, I take no responsibility for your actions or your system if you use this firmware and you overheat your system due to a bug or improper operation. 
@@ -71,7 +73,7 @@ In order to use the tachometer on all 8 pwm fan channels requires the use of a 7
 | tach mux pin | pico pin |
 |---------|----------|
 |    A    |    GP8   |
-|    B    |    GP9   |
+|    B    |    GP10   |
 |    X    |    GP11  |
 |    Y    |    GP13  |
 
@@ -80,7 +82,7 @@ The mux for thermistors is wired similarly, and uses the exact same 74HC4052 ana
 | therm mux pin | pico pin |
 |---------|----------------|
 |    A    |    GP8         |
-|    B    |    GP9         |
+|    B    |    GP10         |
 |    X    |    GP26 (A0)   |
 |    Y    |    GP27 (A1)   |
 
