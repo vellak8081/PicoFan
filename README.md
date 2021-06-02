@@ -61,6 +61,18 @@ DtempOnboard = False
 # Hardware
 There's currently no official hardware available, but there is a reference hardware design being worked on over on CircuitMaker: https://workspace.circuitmaker.com/Projects/Details/KienanVella/PicoFan-v1
 
+# To Do
+One of the glaring omissions from the current featureset is DRGB strip support. This should be pretty easy to add, I just haven't implemented it as my personal use case doesn't have any RGB. ¯\_(ツ)_/¯
+
+Another glaring omission is that currently, there is no configuration client. However, it's being planned.
+It will be cross platform - the current plan is to build a python backend with flask, with a  frontend running in any browser.
+The intent is to also be able to use sensor data from the host OS and pass it to the controller over a simple serial link - though this will make the controller not standalone anymore. It's highly recommended that even once it's possible to use only on-die sensors, that you at least have a fluid temperature sensor somewhere in your loop as a safety feature.
+Potentially, you could expose the frontend externally and run it on a tablet or some other auxiliary device as a semi-dedicated hardware monitoring panel.
+
+If you have experience building cross platform desktop apps, collecting cpu/gpu temperature sensor data across platforms, working with Flask, or working with javascript - or you would like to otherwise contribute, get in touch!
+
+Hardware. A reference design is being worked on - see the 'Hardware' section above.
+
 # Notes
 This is considered to be Alpha software. Use at your own risk, I take no responsibility for your actions or your system if you use this firmware and you overheat your system due to a bug or improper operation. 
 
