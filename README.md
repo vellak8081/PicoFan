@@ -62,7 +62,7 @@ DtempOnboard = False
 There's currently no official hardware available, but there is a reference hardware design being worked on over on CircuitMaker: https://workspace.circuitmaker.com/Projects/Details/KienanVella/PicoFan-v1
 
 # To Do
-One of the glaring omissions from the current featureset is DRGB strip support. This should be pretty easy to add, I just haven't implemented it as my personal use case doesn't have any RGB. ¯\_(ツ)_/¯
+One of the glaring omissions from the current featureset is DRGB strip support. This should be pretty easy to add, I just haven't implemented it as my personal use case doesn't have any RGB. ¯\\_(ツ)_/¯
 
 Another glaring omission is that currently, there is no configuration client. However, it's being planned.
 It will be cross platform - the current plan is to build a python backend with flask, with a  frontend running in any browser.
