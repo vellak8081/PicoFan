@@ -8,3 +8,4 @@ tach_mux = True # only set this to true if you have a 74HC4052 connected to expa
 therm_mux = False # only set this to true if you have a 74HC4052 connected to expand the number of thermistor channels.
 digitalTemp = False # only set this to true if you are using DS18B20 devices, including any fitted onboard.
 DtempOnboard = False # only set this to true if your board has a DS18B20 fitted onboard
+alarm = False # set this if your board has a speaker/buzzer onboard

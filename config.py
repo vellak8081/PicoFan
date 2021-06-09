@@ -23,3 +23,4 @@ profileDC = [ [25, 40, 50, 70, 100], [25, 40, 50, 70, 100] ]
 profileSensor = [ 0, 1 ]
 overshoot = 5
 defdc = 50 # default duty cycle to set fans to when no fan curve is defined. A desktop agent can be used to control fan speeds after boot completes.
+beta = False # do not set to true unless you are ready for broken or not fully implemented features

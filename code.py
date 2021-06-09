@@ -1,4 +1,4 @@
-# Kienan Vella's PicoFan V0.9
+# Kienan Vella's PicoFan V0.9.1
 # A digital PWM fan controller implemented in CircuitPython, interfaced over usb serial.
 # Targeted at the pi pico, but readily adapdable to other MCUs.
 
@@ -16,17 +16,31 @@ import pwmio
 import config
 import bconf
 
+# If the beta feature flag is set in config, enable beta features. Else leave them disabled.
+beta_features = config.beta or False
+
+# if our board has an alarm speaker/buzzer installed
+if bconf.alarm and beta_features:
+    try:
+        from audioio import AudioOut
+    except ImportError:
+        try:
+            from audiopwmio import PWMAudioOut as AudioOut
+        except ImportError:
+            pass  # not always supported by every board!
+    speaker = AudioOut(board.GP28)
+
 # if our board has a DS18B20 onboard, set it up
-if bconf.digitalTemp:
+if bconf.digitalTemp and beta_features:
     from adafruit_onewire.bus import OneWireBus
     from adafruit_ds18x20 import DS18X20
     ow_bus = OneWireBus(board.GP22)
     devices = ow_bus.scan()
-    tempDigital = {}
+    tempDigital = []
     dtnum = 0
     for device in devices:
         if device.family_code == 40:
-            dtempSensor[dtnum] = adafruit_ds18x20.DS18X20(ow_bus, devices[dtnum])
+            dtempSensor.append(adafruit_ds18x20.DS18X20(ow_bus, devices[dtnum]))
             dtnum += 1 #count number of devices
 
 if bconf.tach_mux or bconf.therm_mux:
@@ -38,19 +52,17 @@ if bconf.tach_mux or bconf.therm_mux:
     muxB.direction = digitalio.Direction.OUTPUT
 
 # set up tachometer pins and flow sensor pin transition counters
+# these tach channels either go directly to the fan tach outputs, or to one of the 74HC4052 muxes
+tach0 = countio.Counter(board.GP11)
+tach1 = countio.Counter(board.GP13)
+
 if not bconf.tach_mux:
-    tach0 = countio.Counter(board.GP11)
-    tach1 = countio.Counter(board.GP13)
     tach2 = countio.Counter(board.GP7)
     tach3 = countio.Counter(board.GP9)
     # set up tachometer arrays for calculated rpm
     RPM = [0, 0, 0, 0]
 
 elif bconf.tach_mux:
-    # set up two tach input channels that our 74HC4052 mux will connect to
-    tach0 = countio.Counter(board.GP11)
-    tach1 = countio.Counter(board.GP13)
-
     RPM = [0, 0, 0, 0, 0, 0, 0, 0]
     mchan = 0 #used in the main loop for a mini state machine to cycle through mux channels
 
@@ -94,16 +106,21 @@ therm0 = analogio.AnalogIn(board.A0)
 therm1 = analogio.AnalogIn(board.A1)
 
 # thermistor temp storage
+temp = []
+tavg = []
 if not bconf.therm_mux:
-    temp = [ [0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0] ] # array for averaging/smoothing to prevent fan revving
-    tavg = [0.0, 0.0] #averaged temps
     maxtherm = 1
+    temp.append([0.0, 0.0, 0.0, 0.0])
+    temp.append([0.0, 0.0, 0.0, 0.0]) # initialize array for averaging/smoothing to prevent fan revving
+    tavg.append(0.0)
+    tavg.append(0.0) #averaged temps
 
 if bconf.therm_mux:
-    # array for averaging/smoothing to prevent fan revving
-    temp = [ [0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0] ]
-    tavg = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0] #averaged temps
     maxtherm = 7
+    # initialize arrays for averaging/smoothing to prevent fan revving
+    for i in range(maxtherm + 1):
+        temp.append([0.0, 0.0, 0.0, 0.0])
+        tavg.append(0.0) #averaged temps
 
 # populate any unlabeled thermistor channels with a default label
 newlabel = {}
@@ -115,15 +132,15 @@ for f in range(maxtherm + 1):
 tempLabel = newlabel
 
 # populate unfilled labels for digital temp sensors
-if bconf.digitalTemp:
+if bconf.digitalTemp and beta_features:
     if bconf.DtempOnBoard and not config.DthermLabelOverride:
-        newLabel = {}
-        newLabel[0] = "Interior"
+        newLabel = []
+        newLabel.append("Interior")
         for i in range(dtnum + 1):
             try:
-                newLabel[i + 1] = config.DthermLabel[i]
+                newLabel.append(config.DthermLabel[i])
             except:
-                newLabel[i + 1] = "Temp" + str(maxtherm + 1 + i)
+                newLabel.append("Temp" + str(maxtherm + 1 + i))
         config.DthermLabel = newLabel
 
 # get time
@@ -177,6 +194,25 @@ def ReadProfile(fan):
             val = int(config.profileDC[fan][index] + (Scaled * toSpan))
             return val
 
+def PrintHFan():
+    print("Fan#\t%DC\tRPM")
+    for f in range(maxch + 1):
+        if (not bconf.tach_mux and f <= 2) or bconf.tach_mux:
+            print(f'{config.fanLabel[f]}:\t{fandc[f]}%\t{RPM[f]} RPM')
+        elif not bconf.tach_mux and f >= 3:
+            print(f'{config.fanLabel[f]}:\t{fandc[f]}%')
+
+def PrintHTemp():
+    for t in range(maxtherm + 1):
+        print(f'{config.thermLabel[t]}:\t{tavg[t]} C')
+
+def PrintHDTemp():
+    for dt in range(dtnum + 1):
+        print(f'{config.DthermLabel[dt]}:\t{tempDigital[dt]} C')
+
+def PrintHAlarm():
+    print("This feature is not implemented. You shouldn't be here....")
+
 # main loop
 while True:
     if supervisor.runtime.serial_bytes_available:
@@ -190,16 +226,13 @@ while True:
 
         # print fan duty cycle, fan rpm
         if inText.lower().startswith("*"):
-            print("Fan#    %DC    RPM")
-            for f in range(maxch + 1):
-                if (not bconf.tach_mux and f <= 2) or bconf.tach_mux:
-                    print(f'{config.fanLabel[f]}: {fandc[f]}% {RPM[f]} RPM')
-                elif not bconf.tach_mux and f >= 3:
-                    print(f'{config.fanLabel[f]}: {fandc[f]}%')
-            for t in range(maxtherm + 1):
-                print(f'{config.thermLabel[t]}: {tavg[t]} C')
-            for dt in range(dtnum + 1):
-                print(f'{config.DthermLabel[dt]}: {tempDigital[dt]} C')
+            PrintHFan()
+            PrintHTemp()
+            if beta_features:
+                if bconf.digitalTemp:
+                    PrintHDTemp()
+                if bconf.alarm:
+                    PrintHAlarm()
 
         # reload config
         if inText.lower().startswith("r"):
@@ -250,9 +283,11 @@ while True:
     # get fan speeds and temps twice a second
     if now - initial > 0.500:
 
-        if bconf.digitalTemp:
-            for i in range(dtnum + 1):
-                tempDigital[i] = dtempSensor[i].temperature
+        if bconf.digitalTemp and beta_features:
+            i = 0
+            for sensor in dtempsensor:
+                tempDigital[i] = Sensor.temperature
+                i += 1
 
         # read and then clear tach counts
 
